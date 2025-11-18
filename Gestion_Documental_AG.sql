@@ -113,3 +113,7 @@ CREATE TABLE produccion_auxiliar (
     estandar_h DECIMAL(10,2),
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE cuadro_control
+ADD COLUMN alerta_tipo VARCHAR(50) DEFAULT NULL,
+ADD COLUMN alerta_fecha DATE DEFAULT NULL;
