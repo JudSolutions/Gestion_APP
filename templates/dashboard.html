@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Producción Auxiliar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-100 font-sans">
+  <div class="max-w-7xl mx-auto p-6">
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-blue-700">Dashboard Producción</h1>
+      <input type="text" placeholder="Buscar..." class="px-4 py-2 border rounded-xl shadow-sm focus:outline-none" />
+    </div>
+
+    <!-- Tarjetas -->
+    <div id="cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <p class="text-slate-500 text-sm">Próximas a vencer</p>
+        <h2 id="card-proximas" class="text-3xl font-bold text-blue-600">-</h2>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <p class="text-slate-500 text-sm">En proceso</p>
+        <h2 id="card-proceso" class="text-3xl font-bold text-blue-600">-</h2>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <p class="text-slate-500 text-sm">Finalizadas hoy</p>
+        <h2 id="card-finalizadas" class="text-3xl font-bold text-blue-600">-</h2>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow">
+        <p class="text-slate-500 text-sm">Auxiliares activos</p>
+        <h2 id="card-auxiliares" class="text-3xl font-bold text-blue-600">-</h2>
+      </div>
+    </div>
+
+    <h2 class="text-xl font-bold text-blue-700 mb-3">Tareas Pendientes</h2>
+
+<!-- BUSCADOR -->
+<input 
+  id="buscarPendientes"
+  type="text"
+  placeholder="Buscar por tarea, tipo, finca, auxiliar…"
+  class="w-full p-2 border rounded-xl mb-3"
+/>
+
+<!-- TABLA -->
+<div class="grid grid-cols-7 gap-2 mb-2 font-semibold text-slate-600">
+  <div>N° Tarea</div>
+  <div>Tipo</div>
+  <div>Tipología</div>
+  <div>Finca</div>
+  <div>Publicación</div>
+  <div>Días</div>
+  <div>Acción</div>
+</div>
+
+<div id="tablaPendientes" class="space-y-2"></div>
+
+<script>
+loadTablaPendientes();
+
+// BUSCADOR en tiempo real
+document.getElementById("buscarPendientes").addEventListener("input", (e) => {
+  const term = e.target.value.toLowerCase();
+  document.querySelectorAll("#tablaPendientes > div").forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(term) ? "" : "none";
+  });
+});
+</script>
+
+
+    <!-- Gráficas -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-lg font-semibold mb-4 text-slate-700">Tareas por tipología</h3>
+        <canvas id="pieTipologia" height="220"></canvas>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-lg font-semibold mb-4 text-slate-700">Carga por auxiliar</h3>
+        <canvas id="barCarga" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Tareas críticas -->
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h3 class="text-lg font-semibold mb-4 text-slate-700">Tareas críticas</h3>
+      <div id="criticas" class="space-y-3"></div>
+    </div>
+  </div>
+<tbody id="tbody-tareas"></tbody>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

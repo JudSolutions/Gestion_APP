@@ -7,20 +7,21 @@ import math
 import pandas as pd
 import winsound
 from datetime import datetime, time
-from plyer import notification  # pip install plyer
+from plyer import notification
 
-# --- Intentar usar tu módulo de conexión existente ---
+# Intentar usar tu conexión
 try:
     from db_connection import get_connection
     HAS_DB_MODULE = True
-except Exception:
+except:
     HAS_DB_MODULE = False
 
-# --- Ruta del archivo Excel ---
+# Ruta del Excel
 ruta_excel = r"C:\Users\USUARIO\Documents\Gestion_APP\LGDO-AG2_EOP_noviembre2025.xlsm"
+ruta_excel=  r"C:\Users\USUARIO\Documents\Gestion_APP\LGDO-AG1_EOP_noviembre2025.xlsm"   
 
 if not os.path.exists(ruta_excel):
-    print(f"❌ El archivo no existe: {ruta_excel}")
+    print(f"❌ Archivo no encontrado: {ruta_excel}")
     sys.exit(1)
 else:
     print(f"✅ Archivo encontrado: {ruta_excel}")
@@ -45,76 +46,58 @@ CREATE TABLE IF NOT EXISTS {TABLA} (
     horas_ejecutadas DECIMAL(10,2),
     estandar_h DECIMAL(10,2),
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 """
 
-# --- Conexión MySQL desde variables de entorno ---
 def get_conn_from_env():
     import pymysql
-    host = os.environ.get("MYSQL_HOST", "localhost")
-    port = int(os.environ.get("MYSQL_PORT", 3306))
-    user = os.environ.get("MYSQL_USER", "gestion_Admin")
-    password = os.environ.get("MYSQL_PASSWORD", "Ag123456")
-    db = os.environ.get("MYSQL_DB", "Gestion_Documental_AG")
-    return pymysql.connect(host=host, port=port, user=user, password=password, database=db, charset='utf8mb4')
+    return pymysql.connect(
+        host=os.environ.get("MYSQL_HOST", "localhost"),
+        port=int(os.environ.get("MYSQL_PORT", 3306)),
+        user=os.environ.get("MYSQL_USER", "root"),
+        password=os.environ.get("MYSQL_PASSWORD", "Jg1395*:"),
+        database=os.environ.get("MYSQL_DB", "Gestion_Documental_AG"),
+        charset="utf8mb4"
+    )
 
-# --- Funciones auxiliares ---
+# ---- Parseos seguros ----
 def safe_parse_date(val):
     if pd.isna(val):
         return None
-    if isinstance(val, (pd.Timestamp, datetime)):
-        return val.date()
     try:
-        d = pd.to_datetime(val, errors="coerce")
-        if pd.isna(d):
-            return None
-        return d.date()
-    except Exception:
+        return pd.to_datetime(val, errors="coerce").date()
+    except:
         return None
 
 def safe_parse_time(val):
     if pd.isna(val):
         return None
-    if isinstance(val, time):
-        return val
     try:
-        t = pd.to_datetime(val, errors="coerce")
-        if pd.isna(t):
-            return None
-        return t.time()
-    except Exception:
+        return pd.to_datetime(val, errors="coerce").time()
+    except:
         return None
 
 def parse_percent(val):
-    if val is None or (isinstance(val, float) and math.isnan(val)):
+    if pd.isna(val):
         return 0.0
-    s = str(val).strip().replace("%", "").replace(",", ".")
     try:
-        return float(s)
-    except Exception:
+        return float(str(val).replace("%","").replace(",","."))
+    except:
         return 0.0
 
-# --- Notificaciones ---
+# ---- Notificaciones ----
 def notificar_exito():
     winsound.MessageBeep(winsound.MB_ICONASTERISK)
-    notification.notify(
-        title="✅ Sincronización Exitosa",
-        message="El archivo Excel se sincronizó con la base de datos.",
-        timeout=5
-    )
+    notification.notify(title="Sincronización exitosa", message="Excel → MySQL actualizados correctamente", timeout=5)
 
-def notificar_error(error_msg):
+def notificar_error(msg):
     winsound.MessageBeep(winsound.MB_ICONHAND)
-    notification.notify(
-        title="❌ Error en sincronización",
-        message=error_msg,
-        timeout=6
-    )
+    notification.notify(title="Error sincronizando", message=msg, timeout=6)
 
-# --- Proceso principal ---
+# ---- PROCESO PRINCIPAL ----
 def sincronizar_excel_bd():
-    print("📘 Leyendo hojas del archivo Excel...")
-    excel = pd.read_excel(ruta_excel, sheet_name=None, engine="openpyxl")
+    print("📘 Leyendo Excel...")
+    libro = pd.read_excel(ruta_excel, sheet_name=None, engine="openpyxl")
 
     conn = get_connection() if HAS_DB_MODULE else get_conn_from_env()
     cursor = conn.cursor()
@@ -131,41 +114,52 @@ def sincronizar_excel_bd():
 
     total_insertadas = 0
 
-    for nombre_hoja, df in excel.items():
-        print(f"🔹 Procesando hoja '{nombre_hoja}' ({len(df)} filas)")
+    for nombre_hoja, df in libro.items():
+        print(f"\n🔹 Procesando hoja '{nombre_hoja}' ({len(df)} filas)")
 
         if df.empty:
-            print(f"⚠️ Hoja '{nombre_hoja}' vacía, se omite.")
+            print("⚠️ Hoja vacía, omitida.")
             continue
 
-        df.columns = [str(c).strip().upper() for c in df.columns]
-        df["AUXILIAR"] = nombre_hoja
+        # ---- LIMPIEZA DE COLUMNAS ----
+        df.columns = (
+            df.columns.astype(str)
+            .str.strip()
+            .str.upper()
+            .str.replace("\n", " ")
+        )
 
-        mapping = {
+        df = df.loc[:, ~df.columns.str.contains("UNNAMED", case=False)]
+        df = df.loc[:, ~df.columns.str.contains("NAN", case=False)]
+        df = df.loc[:, df.columns.notnull()]
+        df = df.loc[:, df.columns != ""]
+
+        # ---- RENOMBRE FINAL ----
+        rename_map = {
             "FECHA DE PRODUCCIÓN": "FECHA_DE_PRODUCCION",
             "FECHA PRODUCCION": "FECHA_DE_PRODUCCION",
-            "EMPRESA": "EMPRESA",
-            "ACTIVIDAD": "ACTIVIDAD",
             "UNIDAD DE MEDIDA": "UNIDAD_DE_MEDIDA",
-            "HORA INIC H:M": "HORA_INICIO",
-            "HORA INICIO": "HORA_INICIO",
+            "UNIDAD DE  MEDIDA": "UNIDAD_DE_MEDIDA",
+            "HORA INICIO H:M": "HORA_INICIO",
             "HORA FIN H:M": "HORA_FIN",
-            "HORA FIN": "HORA_FIN",
-            "CANTIDAD EJECUTADA": "CANTIDAD_EJECUTADA",
             "% CUMPLIMIENTO": "PORCENTAJE_CUMPLIMIENTO",
-            "PORCENTAJE CUMPLIMIENTO": "PORCENTAJE_CUMPLIMIENTO",
-            "# CAJ/MANT": "CAJA_MANTIS",
-            "CAJ MANT": "CAJA_MANTIS",
-            "OBSERVACIONES": "OBSERVACIONES",
-            "DEBER EJECUTAR": "DEBER_EJECUTAR",
-            "HORAS EJECUTADAS": "HORAS_EJECUTADAS",
-            "ESTANDAR": "ESTANDAR_H"
+            "# CAJA/MANTIS": "CAJA_MANTIS",
+            "DEBIO EJECUTAR": "DEBER_EJECUTAR",
+            "ESTANDAR/HORA": "ESTANDAR_H",
         }
+        df = df.rename(columns=rename_map)
 
-        df = df.rename(columns={k: v for k, v in mapping.items() if k in df.columns})
+        # Añadir auxiliar
+        df["AUXILIAR"] = nombre_hoja
+
         inserts_hoja = 0
 
         for _, fila in df.iterrows():
+
+            # saltar filas vacías
+            if fila.isna().all():
+                continue
+
             try:
                 cursor.execute(insert_sql, (
                     nombre_hoja,
@@ -193,15 +187,13 @@ def sincronizar_excel_bd():
 
     cursor.close()
     conn.close()
-    print(f"🎯 Total filas insertadas en MySQL: {total_insertadas}")
+    print(f"\n🎯 Total insertadas: {total_insertadas}")
 
-# --- Ejecución con notificaciones ---
 if __name__ == "__main__":
     try:
-        print("🔄 Sincronizando Excel con la base de datos...")
         sincronizar_excel_bd()
         notificar_exito()
     except Exception as e:
-        print(f"❌ Error durante la sincronización: {e}")
+        print(f"❌ Error: {e}")
         notificar_error(str(e))
 

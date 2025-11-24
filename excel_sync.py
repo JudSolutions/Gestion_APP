@@ -1,13 +1,13 @@
 import pandas as pd
-from .database import SessionLocal
-from .models import CuadroControl, Produccion
+from db_connection import get_connection
+from models import CuadroControl, Produccion
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-EXCEL_CUADRO = os.getenv("EXCEL_CUADRO")
-EXCEL_PRODUCCION = os.getenv("EXCEL_PRODUCCION")
+EXCEL_CUADRO = os.getenv("CONTROL MESES 2025.xlsx")
+EXCEL_PRODUCCION = os.getenv("LGDO-AG2_EOP_noviembre2025.xlsm")
 
 
 # --- Importar cuadro de control mensual ---

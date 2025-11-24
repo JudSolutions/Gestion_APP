@@ -1,0 +1,27 @@
+<div id="loginBox">
+  <input id="user" placeholder="Usuario">
+  <input id="pass" type="password" placeholder="Contraseña">
+  <button onclick="login()">Entrar</button>
+</div>
+
+<div id="panelTrabajo" class="hidden">
+  <h2>Hola, <span id="nombreAux"></span></h2>
+
+  <label>Tipología</label>
+  <select id="filtroTipo" onchange="loadTareas(); loadActividades();">
+    <option value="ALTA">ALTA</option>
+    <option value="BAJA">BAJA</option>
+    <option value="INSERCION">INSERCION</option>
+  </select>
+
+  <label>Tarea</label>
+  <select id="selectTarea"></select>
+
+  <label>Actividad</label>
+  <select id="selectActividad"></select>
+
+  <button onclick="iniciarActividad()">Iniciar</button>
+  <button onclick="cerrarActividad()">Cerrar actividad</button>
+</div>
+
+<script src="/static/js/auxiliar.js"></script>
